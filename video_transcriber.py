@@ -25,6 +25,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -67,13 +68,17 @@ def identify_input(text: str) -> Dict[str, Any]:
         return {"type": "local_video", "path": text, "original": text}
     if local_media.is_local_audio(text):
         return {"type": "local_audio", "path": text, "original": text}
-    # 抖音（v.douyin.com / douyin.com / iesdouyin.com）
+    # 抖音（v.douyin.com / douyin.com / iesdouyin.com），支持整段分享文本
     low = text.lower()
     if "douyin.com" in low or "iesdouyin.com" in low:
-        return {"type": "douyin", "url": text.strip(), "original": text}
+        return {"type": "douyin", "url": text, "original": text}
     url = bilibili.parse_url(text)
     if url:
         return {"type": "bilibili", "url": url, "original": text}
+    # 通用平台链接（YouTube/AcFun/微博等，走 yt-dlp）
+    m = re.search(r"https?://[^\s，。、；;！!？?]+", text)
+    if m:
+        return {"type": "generic_url", "url": m.group(0), "original": text}
     return {"type": "unknown", "original": text}
 
 
@@ -194,6 +199,33 @@ async def _analyze_douyin(url: str, cfg: Dict[str, Any], cache: CacheManager) ->
     )
 
 
+async def _analyze_generic_url(url: str, cfg: Dict[str, Any], cache: CacheManager) -> Dict[str, Any]:
+    """通用平台（YouTube/AcFun/微博等）：yt-dlp 下载音频 → 转写"""
+    info = douyin.download_via_ytdlp(
+        url, str(cache.audio_dir),
+        log=lambda msg: print(msg),
+        custom_cookie=cfg.get("cookie", ""),
+    )
+    if not info:
+        return {"status": "error", "error": "fetch_failed",
+                "message": "无法下载该平台音频（需安装 yt-dlp；YouTube 需代理；部分平台需 cookie 填入 config.json）"}
+
+    duration = local_media.probe_duration(info["audio_path"])
+    max_dur = cfg["max_duration_minutes"] * 60
+    if max_dur > 0 and duration > max_dur:
+        return {"status": "error", "error": "duration_exceeded",
+                "message": f"时长 {duration / 60:.1f} 分钟超过限制 {cfg['max_duration_minutes']} 分钟"}
+
+    return await _transcribe_audio(
+        title=info["title"],
+        audio_path=info["audio_path"],
+        src_type="generic",
+        meta={"url": url},
+        duration=duration,
+        cfg=cfg, cache=cache,
+    )
+
+
 async def _analyze_local_video(path: str, cfg: Dict[str, Any], cache: CacheManager) -> Dict[str, Any]:
     p = Path(path).resolve()
     title = p.stem
@@ -278,7 +310,7 @@ def run(input_text: str, **kwargs) -> Dict[str, Any]:
             "status": "error",
             "error": "invalid_input",
             "message": f"无法识别输入：{input_text[:120]}",
-            "suggestion": "支持：B 站链接（BV 号 / bilibili.com URL / b23.tv 短链）、抖音链接（v.douyin.com / douyin.com）、本地 mp4 / mkv / mp3 / wav / m4a 等",
+            "suggestion": "支持：B 站链接（BV 号 / bilibili.com URL / b23.tv 短链）、抖音链接（v.douyin.com / douyin.com）、通用平台链接（YouTube/AcFun 等，需 yt-dlp）、本地 mp4 / mkv / mp3 / wav / m4a 等",
         }
 
     cfg = load_config()
@@ -288,6 +320,8 @@ def run(input_text: str, **kwargs) -> Dict[str, Any]:
             result = asyncio.run(_analyze_bilibili(info_input["url"], cfg, cache))
         elif info_input["type"] == "douyin":
             result = asyncio.run(_analyze_douyin(info_input["url"], cfg, cache))
+        elif info_input["type"] == "generic_url":
+            result = asyncio.run(_analyze_generic_url(info_input["url"], cfg, cache))
         elif info_input["type"] == "local_video":
             result = asyncio.run(_analyze_local_video(info_input["path"], cfg, cache))
         elif info_input["type"] == "local_audio":

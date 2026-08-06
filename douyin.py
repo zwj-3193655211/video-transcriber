@@ -35,6 +35,9 @@ API_HEADERS = {"User-Agent": DESKTOP_UA, "Referer": "https://www.douyin.com/",
                "Accept": "application/json"}
 DEFAULT_RATIO = "1080p"
 
+# 从分享文本中提取 URL（用户常整段粘贴：emoji + 文案 + 链接 + 复制提示）
+URL_RE = re.compile(r"https?://[^\s，。、；;！!？?]+")
+
 _CTX = None
 
 
@@ -49,6 +52,16 @@ def _http_get(url: str, headers: dict, timeout: int = 30) -> bytes:
     req = Request(url, headers=headers)
     with urlopen(req, timeout=timeout, context=_ctx()) as resp:
         return resp.read()
+
+
+def _extract_url(text: str) -> str:
+    """从混合文本中提取第一个 http(s) 链接；没有则原样返回"""
+    if not text:
+        return ""
+    m = URL_RE.search(text)
+    if m:
+        return m.group(0)
+    return text.strip()
 
 
 def _safe_filename(name: str) -> str:
@@ -225,6 +238,68 @@ def _cookie_from_selenium(aweme_id: str,
             pass
 
 
+def download_via_ytdlp(url: str, output_dir: str,
+                          log: Callable[[str], None] = lambda *_: None,
+                          custom_cookie: str = "") -> Optional[Dict[str, Any]]:
+    """
+    通用平台下载（yt-dlp 主路由）：任意 yt-dlp 支持的链接（YouTube/AcFun/微博/西瓜等）
+    → 音频 m4a。需安装 yt-dlp；YouTube 需代理；部分平台需 cookie。
+
+    返回 {"title", "audio_path", "url"} 或 None
+    """
+    import shutil
+    import subprocess
+
+    url = _extract_url(url)
+    if not url:
+        log("无效的链接")
+        return None
+    log(f"通用通道（yt-dlp）处理：{url}")
+
+    yt = shutil.which("yt-dlp")
+    cmd_prefix = None
+    if yt:
+        cmd_prefix = [yt]
+    else:
+        try:
+            import yt_dlp  # noqa: F401
+            cmd_prefix = [sys.executable, "-m", "yt_dlp"]
+        except ImportError:
+            log("未安装 yt-dlp，无法处理该平台（pip install yt-dlp）")
+            return None
+
+    os.makedirs(output_dir, exist_ok=True)
+    cmd = cmd_prefix + [
+        "--no-playlist",
+        "-f", "ba/b",
+        "-x", "--audio-format", "m4a",
+        "-o", os.path.join(output_dir, "%(title)s.%(ext)s"),
+    ]
+    if custom_cookie:
+        cmd += ["--add-header", f"Cookie: {custom_cookie}"]
+    cmd += [url]
+    try:
+        flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           creationflags=flags, timeout=1800)
+        if r.returncode != 0:
+            log(f"yt-dlp 失败：{(r.stderr or '')[-200:]}")
+            return None
+    except Exception as e:
+        log(f"yt-dlp 异常：{e}")
+        return None
+
+    exts = (".m4a", ".mp3", ".webm", ".aac")
+    files = [f for f in Path(output_dir).iterdir()
+             if f.is_file() and f.suffix.lower() in exts]
+    if not files:
+        log("yt-dlp 未产出音频文件")
+        return None
+    latest = max(files, key=lambda f: f.stat().st_mtime)
+    log(f"✅ 音频已下载：{latest.name}")
+    return {"title": latest.stem, "audio_path": str(latest), "url": url}
+
+
 # ==================== 对外接口 ====================
 
 def download_douyin(url: str, output_dir: str,
@@ -237,6 +312,10 @@ def download_douyin(url: str, output_dir: str,
         m = re.search(r"/(?:video|share/video)/(\d+)", u)
         return m.group(1) if m else ""
 
+    url = _extract_url(url)  # 支持整段粘贴分享文本
+    if not url or ("douyin.com" not in url and "iesdouyin.com" not in url):
+        log("无效的抖音链接")
+        return None
     log(f"处理抖音链接：{url}")
     os.makedirs(output_dir, exist_ok=True)
     aweme_id = _resolve_aweme_id(url)

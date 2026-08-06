@@ -103,11 +103,14 @@ B 站下载已纯标准库化（urllib），直连失败自动降级 **yt-dlp** 
 | 短链 | `https://b23.tv/abc123`（自动展开） |
 | 抖音短链 | `https://v.douyin.com/xxx/` |
 | 抖音视频页 | `https://www.douyin.com/video/<id>` |
+| 通用平台链接 | `https://www.youtube.com/watch?v=...` / AcFun / 微博 等（需 yt-dlp，YouTube 需代理） |
 | 混合文本 | `帮我看看 https://bilibili.com/video/BV1xx... 讲什么` |
 | 本地视频 | `C:\Videos\lecture.mp4` |
 | 本地音频 | `D:\audios\interview.wav` |
 
 **抖音下载方案（多级 fallback）**：L1 H5 分享页 SSR 直连（快、零依赖）→ L2 Selenium 浏览器拿 cookie 调 web detail API 拿 CDN 地址（稳定，绕开风控，需装 selenium）→ L3 手动 cookie（浏览器复制，最快最稳）。抖音风控是动态的，失败时稍后重试或填 cookie 即可。
+
+**通用平台**（非 B 站/抖音链接）：走 yt-dlp 主路由下载音频（`pip install yt-dlp`）。分享链接支持**整段粘贴**（自动提取 URL）。
 
 ## Output
 

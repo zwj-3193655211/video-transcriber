@@ -131,6 +131,12 @@
     "douyin": [
       "v.douyin.com short link",
       "douyin.com/video/<id>"
+    ],
+    "generic": [
+      "YouTube",
+      "AcFun",
+      "weibo",
+      "etc. (via yt-dlp, needs proxy for YouTube)"
     ]
   },
   "setup": {
