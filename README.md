@@ -21,6 +21,10 @@
 
 ## 效果预览
 
+**真实使用**：把 B 站视频链接丢给 AI agent（hermes / pi / Claude Code 等），agent 自动调用本 skill 完成转写并返回视频内容：
+
+![agent](assets/screenshot_agent.png)
+
 **状态检查 / 环境一键就绪**（自动复用 avtt / conda / uv，缺 Python 自动装 uv）：
 
 ![status](assets/screenshot_status.png)
