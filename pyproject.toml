@@ -1,0 +1,45 @@
+[project]
+name = "video-transcriber"
+version = "3.0.0"
+description = "把 B 站视频或本地音视频转写为带时间戳的文字（FunASR Paraformer）"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10,<3.13"
+
+# 运行时核心依赖
+# 注意：torch/torchaudio 不在这里——它们跟 CUDA 版本绑定，
+# 用户的 avtt env 已经有 GPU 版，uv 模式下让 uv 装默认 CUDA 版。
+dependencies = [
+    "funasr>=1.2.6",
+    "modelscope>=1.9.5",
+    "requests>=2.28.0",
+    "python-dotenv>=1.0.0",
+]
+
+# torch/torchaudio 让用户自己挑（CPU / cu118 / cu121 / cu128）
+# avtt 用户：已经在 avtt 里了，跳过
+# 全新用户：`uv pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128`
+
+[project.scripts]
+video-transcriber = "video_transcriber:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+include = [
+    "video_transcriber.py",
+    "bilibili.py",
+    "local_media.py",
+    "recognizer.py",
+    "asr_backend.py",
+    "download.py",
+    "setup.py",
+    "cache.py",
+    "config.py",
+    "SKILL.md",
+    "manifest.json",
+    "README.md",
+]
