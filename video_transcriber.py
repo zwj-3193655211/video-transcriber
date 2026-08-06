@@ -40,6 +40,7 @@ if sys.platform == "win32":
 import bilibili
 import local_media
 import recognizer
+import douyin
 from cache import CacheManager
 from config import CONFIG_FILE, SKILL_DIR, load_config
 import asr_backend
@@ -66,6 +67,10 @@ def identify_input(text: str) -> Dict[str, Any]:
         return {"type": "local_video", "path": text, "original": text}
     if local_media.is_local_audio(text):
         return {"type": "local_audio", "path": text, "original": text}
+    # 抖音（v.douyin.com / douyin.com / iesdouyin.com）
+    low = text.lower()
+    if "douyin.com" in low or "iesdouyin.com" in low:
+        return {"type": "douyin", "url": text.strip(), "original": text}
     url = bilibili.parse_url(text)
     if url:
         return {"type": "bilibili", "url": url, "original": text}
@@ -162,6 +167,33 @@ async def _analyze_bilibili(url: str, cfg: Dict[str, Any], cache: CacheManager) 
     )
 
 
+async def _analyze_douyin(url: str, cfg: Dict[str, Any], cache: CacheManager) -> Dict[str, Any]:
+    """抖音：下载音频（H5 → 浏览器 cookie → API 多级）→ 转写"""
+    info = douyin.download_douyin(
+        url, str(cache.audio_dir),
+        log=lambda msg: print(msg),
+        custom_cookie=cfg.get("cookie", ""),
+    )
+    if not info:
+        return {"status": "error", "error": "fetch_failed",
+                "message": "无法获取抖音视频（风控时可稍后重试，或浏览器登录抖音后复制 cookie 填入 config.json）"}
+
+    duration = local_media.probe_duration(info["audio_path"])
+    max_dur = cfg["max_duration_minutes"] * 60
+    if max_dur > 0 and duration > max_dur:
+        return {"status": "error", "error": "duration_exceeded",
+                "message": f"时长 {duration / 60:.1f} 分钟超过限制 {cfg['max_duration_minutes']} 分钟"}
+
+    return await _transcribe_audio(
+        title=info["title"],
+        audio_path=info["audio_path"],
+        src_type="douyin",
+        meta={"aweme_id": info["aweme_id"], "url": url},
+        duration=duration,
+        cfg=cfg, cache=cache,
+    )
+
+
 async def _analyze_local_video(path: str, cfg: Dict[str, Any], cache: CacheManager) -> Dict[str, Any]:
     p = Path(path).resolve()
     title = p.stem
@@ -246,7 +278,7 @@ def run(input_text: str, **kwargs) -> Dict[str, Any]:
             "status": "error",
             "error": "invalid_input",
             "message": f"无法识别输入：{input_text[:120]}",
-            "suggestion": "支持：B 站链接（BV 号 / bilibili.com URL / b23.tv 短链）、本地 mp4 / mkv / mp3 / wav / m4a 等",
+            "suggestion": "支持：B 站链接（BV 号 / bilibili.com URL / b23.tv 短链）、抖音链接（v.douyin.com / douyin.com）、本地 mp4 / mkv / mp3 / wav / m4a 等",
         }
 
     cfg = load_config()
@@ -254,6 +286,8 @@ def run(input_text: str, **kwargs) -> Dict[str, Any]:
     try:
         if info_input["type"] == "bilibili":
             result = asyncio.run(_analyze_bilibili(info_input["url"], cfg, cache))
+        elif info_input["type"] == "douyin":
+            result = asyncio.run(_analyze_douyin(info_input["url"], cfg, cache))
         elif info_input["type"] == "local_video":
             result = asyncio.run(_analyze_local_video(info_input["path"], cfg, cache))
         elif info_input["type"] == "local_audio":
@@ -334,10 +368,11 @@ def _help_text() -> str:
         f"video-transcriber v{__skill__['version']}\n"
         f"{__skill__['description']}\n\n"
         "用法：\n"
-        '    skill.run("<B站链接 / BV号 / 本地音视频路径>")\n\n'
+        '    skill.run("<B站/抖音链接 / BV号 / 本地音视频路径>")\n\n'
         "示例：\n"
         '    skill.run("BV1xx411c7mD")\n'
         '    skill.run("https://www.bilibili.com/video/BV1xx411c7mD")\n'
+        '    skill.run("https://v.douyin.com/xxx/")\n'
         '    skill.run("C:\\\\Videos\\\\lecture.mp4")\n'
         '    skill.run("D:/audios/interview.wav")\n\n'
         "命令：\n"

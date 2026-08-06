@@ -32,6 +32,7 @@ packages = ["."]
 include = [
     "video_transcriber.py",
     "bilibili.py",
+    "douyin.py",
     "local_media.py",
     "recognizer.py",
     "asr_backend.py",

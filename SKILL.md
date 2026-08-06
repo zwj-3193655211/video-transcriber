@@ -1,6 +1,6 @@
 ---
 name: video-transcriber
-description: Use when user provides a Bilibili URL (BV number, bilibili.com link, b23.tv short link) or a local media file path (mp4, mkv, flv, avi, mov, webm, m4v, mp3, wav, m4a, flac, aac) and asks to transcribe, convert, extract, or summarize the spoken content. Triggers on "转写这个视频", "提取这段录音的文字", "看看这个 B 站讲了什么", or any paste of a BV/URL with transcription intent. Also fires when mixed text contains a Bilibili link plus a verb like "转写 / 总结 / 提取文字".
+description: Use when user provides a Bilibili URL (BV number, bilibili.com link, b23.tv short link), a Douyin URL (v.douyin.com, douyin.com), or a local media file path (mp4, mkv, flv, avi, mov, webm, m4v, mp3, wav, m4a, flac, aac) and asks to transcribe, convert, extract, or summarize the spoken content. Triggers on "转写这个视频", "提取这段录音的文字", "看看这个 B 站/抖音讲了什么", or any paste of a BV/URL with transcription intent. Also fires when mixed text contains a video link plus a verb like "转写 / 总结 / 提取文字".
 license: MIT
 compatibility: python>=3.10,<3.13; windows/linux/macos; ffmpeg required for local media
 metadata:
@@ -17,8 +17,9 @@ metadata:
 ## When to Use
 
 - 用户给一个 B 站链接（BV 号 / `bilibili.com/video/...` / `b23.tv/...`），要转写或总结
+- 用户给一个抖音链接（`v.douyin.com` 短链 / `douyin.com/video/<id>`），要转写或总结
 - 用户给本地视频/音频路径（mp4, mkv, mp3, wav, m4a 等），要文字稿
-- 混合文本里塞了个 B 站链接 + 转写/总结意图
+- 混合文本里塞了个视频链接 + 转写/总结意图
 
 **NOT for**：纯图片 OCR、PDF 文字、纯字幕文件翻译、YouTube（暂未适配）
 
@@ -100,9 +101,13 @@ B 站下载已纯标准库化（urllib），直连失败自动降级 **yt-dlp** 
 | BV 号 | `BV1xx411c7mD` |
 | 标准 URL | `https://www.bilibili.com/video/BV1xx411c7mD` |
 | 短链 | `https://b23.tv/abc123`（自动展开） |
+| 抖音短链 | `https://v.douyin.com/xxx/` |
+| 抖音视频页 | `https://www.douyin.com/video/<id>` |
 | 混合文本 | `帮我看看 https://bilibili.com/video/BV1xx... 讲什么` |
 | 本地视频 | `C:\Videos\lecture.mp4` |
 | 本地音频 | `D:\audios\interview.wav` |
+
+**抖音下载方案（多级 fallback）**：L1 H5 分享页 SSR 直连（快、零依赖）→ L2 Selenium 浏览器拿 cookie 调 web detail API 拿 CDN 地址（稳定，绕开风控，需装 selenium）→ L3 手动 cookie（浏览器复制，最快最稳）。抖音风控是动态的，失败时稍后重试或填 cookie 即可。
 
 ## Output
 
@@ -173,6 +178,7 @@ B 站下载已纯标准库化（urllib），直连失败自动降级 **yt-dlp** 
 | `video_transcriber.py` | 主入口：`run / setup / info / check_status / initialize / clear_cache` |
 | `asr_backend.py` | ASR 后端抽象：local (FunASR) / siliconflow (云端) / auto，纯标准库 |
 | `bilibili.py` | B 站爬虫（urllib 纯标准库 + 自动 cookie 重抓 + yt-dlp 兜底） |
+| `douyin.py` | 抖音下载（H5 SSR → Selenium cookie → API CDN 多级 fallback，纯标准库 + 可选 selenium） |
 | `local_media.py` | 本地音视频识别 + ffmpeg 提取/转 WAV |
 | `recognizer.py` | FunASR Paraformer-Large 识别（单例缓存） |
 | `download.py` | 模型下载/检查（CLI：`--check` / `--force` / `--model-root`） |

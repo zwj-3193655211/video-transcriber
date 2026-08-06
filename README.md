@@ -1,6 +1,6 @@
 # video-transcriber
 
-把 **B 站视频** 或 **本地音视频** 转成带时间戳的文字（中文 ASR + 标点恢复）。
+把 **B 站视频**、**抖音视频** 或 **本地音视频** 转成带时间戳的文字（中文 ASR + 标点恢复）。
 
 基石模型：**FunASR Paraformer-Large + FSMN-VAD + CT-PUNC**（与 AI-VedioToText 项目同一套模型，下载后可互相复用）。
 
@@ -9,6 +9,7 @@
 ## 功能
 
 - **B 站** — BV 号 / `bilibili.com` URL / `b23.tv` 短链（自动展开），混合文本也能识别；纯标准库爬虫 + yt-dlp 自动兜底
+- **抖音** — `v.douyin.com` 短链 / `douyin.com/video/<id>`；多级 fallback：H5 分享页直连 → Selenium cookie → API CDN（风控也不怕）
 - **本地视频** — mp4, mkv, flv, avi, mov, webm 等（用 ffmpeg 抽音轨）
 - **本地音频** — mp3, wav, m4a, aac, flac 等
 - **输出** — 全文（带标点）+ 句级时间戳 + txt 缓存文件
