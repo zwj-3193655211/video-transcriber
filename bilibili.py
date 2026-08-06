@@ -8,6 +8,7 @@ B 站视频爬虫：提取 BV 号、解析短链、下载 m4a 音频
 实现借鉴了 AI-VedioToText 项目的 GetBiliBiliVideo.py 与
 video-downloader skill 的 yt-dlp 兜底模式。
 """
+import gzip
 import json
 import os
 import re
@@ -18,11 +19,22 @@ from typing import Any, Callable, Dict, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from netutil import make_ssl_context
+
 BV_PATTERN = re.compile(r"BV[a-zA-Z0-9]{10,12}")
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 )
+# 补齐浏览器全套头，降低被 B 站反爬拦截的概率
+FULL_HEADERS = {
+    "User-Agent": USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    "Accept-Encoding": "gzip",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+}
 
 
 def _safe_filename(name: str) -> str:
@@ -30,12 +42,18 @@ def _safe_filename(name: str) -> str:
 
 
 def _http_get(url: str, headers: Optional[dict] = None, timeout: int = 30):
-    """GET 请求（纯标准库）。返回 (body, set_cookie_list, final_url)"""
-    req = Request(url, headers=headers or {})
-    with urlopen(req, timeout=timeout) as resp:
+    """GET 请求（纯标准库，自动解 gzip）。返回 (body, set_cookie_list, final_url)"""
+    hdrs = dict(FULL_HEADERS)
+    if headers:
+        hdrs.update(headers)
+    req = Request(url, headers=hdrs)
+    with urlopen(req, timeout=timeout, context=make_ssl_context()) as resp:
         body = resp.read()
+        content_encoding = resp.headers.get("Content-Encoding", "").lower()
         cookies = resp.headers.get_all("Set-Cookie") or []
         final_url = resp.geturl()
+    if content_encoding == "gzip":
+        body = gzip.decompress(body)
     return body, cookies, final_url
 
 

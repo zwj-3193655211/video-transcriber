@@ -37,6 +37,7 @@ include = [
     "asr_backend.py",
     "download.py",
     "setup.py",
+    "netutil.py",
     "cache.py",
     "config.py",
     "SKILL.md",

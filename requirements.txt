@@ -1,8 +1,10 @@
 # video-transcriber 依赖
 # 核心链路纯 Python 标准库即可运行（云端 ASR 模式）：
 #   - B 站下载：urllib（无需 requests）
-#   - 云端 ASR：urllib 调用 SiliconFlow API（仅需 SILICONFLOW_API_KEY）
-#
+#   - 云端 ASR：urllib 调用转写 API（仅需 API key）
+# 唯一例外：certifi（纯 Python CA 包，绕开部分 conda OpenSSL 的 Windows 证书库 bug）
+certifi>=2024.0.0
+
 # 本地 ASR 模式才需要下面这些（funasr 会自动带入 torch 依赖）：
 funasr>=1.2.6
 modelscope>=1.9.5

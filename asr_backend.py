@@ -37,6 +37,8 @@ from typing import Any, Dict, List, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from netutil import make_ssl_context
+
 SILICONFLOW_URL = "https://api.siliconflow.cn/v1/audio/transcriptions"
 SILICONFLOW_DEFAULT_MODEL = "FunAudioLLM/SenseVoiceSmall"
 
@@ -246,7 +248,7 @@ def _post_json(url: str, body: bytes, content_type: str, key: str, label: str) -
         method="POST",
     )
     try:
-        with urlopen(req, timeout=900) as resp:
+        with urlopen(req, timeout=900, context=make_ssl_context()) as resp:
             response_text = resp.read().decode("utf-8", errors="replace")
     except HTTPError as e:
         detail = e.read().decode("utf-8", errors="replace")
