@@ -19,6 +19,20 @@
 - **缓存** — 音频和文本都缓存，重复跑秒回
 - **GPU 加速** — 配好 CUDA 后比 CPU 快 5–10 倍
 
+## 效果预览
+
+**状态检查 / 环境一键就绪**（自动复用 avtt / conda / uv，缺 Python 自动装 uv）：
+
+![status](assets/screenshot_status.png)
+
+**B 站视频 → 带时间戳文字**（FunASR Paraformer-Large，GPU 加速）：
+
+![transcribe](assets/screenshot_transcribe.png)
+
+**多平台支持**（抖音 H5 直连 + 通用平台 yt-dlp 通道）：
+
+![platforms](assets/screenshot_platforms.png)
+
 ## 新用户快速开始（一条命令）
 
 ```bash
