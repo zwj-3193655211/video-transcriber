@@ -7,10 +7,10 @@
   "long_description": "video-transcriber 是一个 Agent Skills 标准 skill，支持 B 站链接（BV 号 / bilibili.com URL / b23.tv 短链）、抖音链接（v.douyin.com / douyin.com）和本地音视频文件（mp4, mkv, mp3, wav, m4a 等）的语音转写。基石模型为 FunASR Paraformer-Large + FSMN-VAD + CT-PUNC，中文场景带标点恢复与句级时间戳。首次运行自动下载模型（~1.1GB），支持复用已有模型目录跳过下载。",
   "author": "zwj-3193655211",
   "license": "MIT",
-  "homepage": "https://github.com/zwj-3193655211/read-bilibili-video",
+  "homepage": "https://github.com/zwj-3193655211/video-transcriber",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zwj-3193655211/read-bilibili-video.git"
+    "url": "https://github.com/zwj-3193655211/video-transcriber.git"
   },
   "keywords": [
     "video",

@@ -22,8 +22,8 @@
 ## 新用户快速开始（一条命令）
 
 ```bash
-git clone https://github.com/zwj-3193655211/read-bilibili-video.git
-cd read-bilibili-video       # (clone 后的目录名)
+git clone https://github.com/zwj-3193655211/video-transcriber.git
+cd video-transcriber       # (clone 后的目录名)
 
 # 方式 A：Windows 双击运行
 run.bat --setup           # 自动：选 Python 环境 → 装依赖 → 下模型 → 写配置
